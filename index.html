@@ -41,9 +41,9 @@
   .video-item .num { color: #666; min-width: 30px; font-size: 12px; }
   .video-item .title { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .video-item .check { color: #4caf50; font-size: 16px; min-width: 16px; }
-  .video-item .time-badge { font-size: 12px; color: #3ea6ff; min-width: 50px; text-align: right; }
+  .video-item .time-badge { font-size: 12px; color: #3ea6ff; min-width: 40px; text-align: right; }
+  .video-item .dur { font-size: 12px; color: #666; min-width: 45px; text-align: right; }
 
-  /* setup overlay */
   .setup-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.85); display: flex; align-items: center; justify-content: center; padding: 16px; z-index: 100; overflow-y: auto; }
   .setup-card { background: #1a1a1a; border: 1px solid #333; border-radius: 12px; padding: 24px; max-width: 520px; width: 100%; }
   .setup-card h2 { margin: 0 0 12px; font-size: 20px; }
@@ -69,39 +69,33 @@
 </head>
 <body>
 
-<!-- ============ SETUP ============ -->
 <div class="setup-overlay" id="setup-overlay" style="display:none">
   <div class="setup-card">
     <h2 id="setup-title">Настройка синхронизации</h2>
     <p>Прогресс хранится в приватном GitHub Gist и синхронизируется между устройствами. Токен остаётся только в этом браузере.</p>
-
     <details>
       <summary>Как получить токен (1 минута)</summary>
       <ol>
         <li>Открой <a href="https://github.com/settings/tokens/new" target="_blank">github.com/settings/tokens/new</a></li>
         <li>Note: <code>rin-tracker</code></li>
-        <li>Expiration: <code>No expiration</code> (или на свой вкус)</li>
+        <li>Expiration: <code>No expiration</code></li>
         <li>Scopes: отметь только <code>gist</code></li>
         <li>Generate token → скопируй <code>ghp_...</code></li>
       </ol>
     </details>
-
     <label>Personal Access Token</label>
     <input type="password" id="setup-token" placeholder="ghp_..." autocomplete="off" spellcheck="false">
-
     <label>Gist ID <span style="color:#666">(пусто — создадим новый)</span></label>
     <input type="text" id="setup-gist" placeholder="например a1b2c3d4e5f6..." autocomplete="off" spellcheck="false">
-
     <div class="setup-buttons">
       <button id="setup-connect" class="primary">Подключить</button>
       <button id="setup-skip">Без синхронизации</button>
     </div>
     <div class="setup-error" id="setup-error"></div>
-    <div class="setup-note">Токен нужен только для доступа к твоим гистам. Не показывай его никому и не коммить в репозиторий.</div>
+    <div class="setup-note">Токен нужен только для доступа к твоим гистам. Не показывай его никому.</div>
   </div>
 </div>
 
-<!-- ============ APP ============ -->
 <div class="container" id="app" style="display:none">
   <header>
     <h1>РИН</h1>
@@ -138,123 +132,128 @@
 </div>
 
 <script>
-// ============================================================
-// СПИСОК ВИДЕО
-// ============================================================
 const VIDEOS = [
-  { id: "d0RtadmZc5s", title: "Я ЗАШЕЛ В RIVALS В VR ОЧКАХ!" },
-  { id: "vdQR9pDVASs", title: "Сколько КЛЮЧЕЙ Я Смогу Получить ЗА 1 ЧАС?" },
-  { id: "esyHKuQE4Tg", title: "СКИН КЕЙСЫ ВЫБИРАЮТ МОЕ СНАРЯЖЕНИЕ В RIVALS MODDED!" },
-  { id: "CJ94CjM-YI4", title: "Я СТАЛ #1 ИГРОКОМ В RIVALS MODDED!" },
-  { id: "9m_tUMZ36JU", title: "Победил с КАЖДЫМ скином на штурмовую винтовку в Rivals Modded.." },
-  { id: "670QK2FxA4A", title: "Я НАШЕЛ ЛУЧШИЙ RIVALS MODDED (есть звуки)" },
-  { id: "p0hHwOD9lqc", title: "Мeня ЗАБАНИЛИ в Rivals..(реально)" },
-  { id: "cJ6m3Hq3GEY", title: "Я ВЗЛОМАЛ РИВАЛС..." },
-  { id: "Yx6mTl-wENA", title: "Это НОВОЕ Оружие Имба В РИВАЛС..." },
-  { id: "ZwqqqzaASnM", title: "0 КЛЮЧЕЙ VS 99,000 КЛЮЧЕЙ СНАРЯЖЕНИЕ В Roblox Rivals!" },
-  { id: "CBXN-ctAoQQ", title: "НОВОЕ ЛУЧШЕЕ СНАРЯЖЕНИЕ В RIVALS!" },
-  { id: "U8l9z1GWm7Y", title: "Я ПОБЕДИЛ В КАЖДОМ РЕЖИМЕ РИВАЛС!" },
-  { id: "E8Ovb_Gfv2w", title: "Я НАШЁЛ ЛУЧШИЕ САЙТЫ ДЛЯ ПОКУПКИ РОБУКСОВ В 2026" },
-  { id: "vJU4HQZ_qng", title: "Я ЗАШЕЛ В RIVALS С ALIEXPRESS..." },
-  { id: "pul7qw0OgBw", title: "СНАЙПА ТЕПЕРЬ ИМБА В RIVALS..." },
-  { id: "F-CSqIKgZ_g", title: "Я ПРИТВОРИЛСЯ ЧИТЕРОМ В RIVALS KIDS..." },
-  { id: "8-yQnNjfEQI", title: "Я КУПИЛ ВСЁ В САМОМ КРУПНОМ ЛЕТНЕМ ОБНОВЛЕНИИ ROBLOX RIVALS!" },
-  { id: "hNQ-RSpDEfo", title: "Я ЗАШЁЛ В НОВЫЙ RIVALS KIDS…" },
-  { id: "94WWCKs5TSo", title: "СМОЖЕТ ЛИ НЕЙРОСЕТЬ АПНУТЬ МНЕ РАНГ В RIVALS?" },
-  { id: "2Zns6yXiXoU", title: "Я ВКЛЮЧИЛ ЧИТЫ ПРОТИВ СВОЕЙ ДЕВУШКИ В RIVALS…" },
-  { id: "hwJ4gynd2w0", title: "Я ИГРАЮ НА МАКСИМАЛЬНОЙ СЛОЖНОСТИ ПРОТИВ СВОЕЙ ДЕВУШКИ В РИВАЛС!" },
-  { id: "GC1BTqk6q6I", title: "Я ВПЕРВЫЕ ИГРАЮ в Rivals С ТЕЛЕФОНА..." },
-  { id: "uuhKxSrIw5Q", title: "Я ПРОКАЧАЛ Своего ПОДПИСЧИКА На 100,000R$ в Roblox RIvals!" },
-  { id: "xzBiCx6glbM", title: "Я раскрыл СЕКРЕТНЫЕ AIMBOT НАСТРОЙКИ в Roblox Rivals.." },
-  { id: "qgyowAYLYZE", title: "СМОГУ ЛИ Я СТАТЬ ПРО НА НОЖЕ за 24 ЧАСА..? (RIVALS)" },
-  { id: "xmN_aeSiUiY", title: "Ривалс Но МОЯ ДЕВУШКА Выбирает Мне СНАРЯЖЕНИЕ!" },
-  { id: "dGBcpwjg23A", title: "ВЫЖИВИ В ПРЯТКАХ И ПОЛУЧИ СКИН КЕЙС! (РИВАЛС)" },
-  { id: "fqY8sL93nFY", title: "Я СЫГРАЛ 1 НА 1 ПРОТИВ КАЖДОГО РАНГА В RIVALS!" },
-  { id: "iXP4g2HbSkc", title: "СМОГУ ЛИ Я ПОБЕДИТЬ БРУКЛЕНА В RIVALS ?" },
-  { id: "IGqr8MMDvjM", title: "Ривалс, Но Мои Противники УМНОЖАЮТСЯ..!" },
-  { id: "pw-mYGvgvpE", title: "С КАЖДОЙ ПОБЕДОЙ МОЕ СНАРЯЖЕНИЕ СТАНОВИТСЯ ЛУЧШЕ" },
-  { id: "E9llECq4J6g", title: "Я ВЫЙГРАЛ С КАЖДЫМ ДОНАТ НАБОРОМ В РИВАЛС!" },
-  { id: "RFp8ow0aqBo", title: "Ежедневный Магазин ВЫБИРАЕТ Мне СНАРЯЖЕНИЕ В Roblox Rivals!" },
-  { id: "2bgQCh4SNqs", title: "Я Дал НУБУ Управлять МНОЙ В РИВАЛС 24 ЧАСА!" },
-  { id: "Pm15uV9fyjE", title: "Я попробовал играть ТОЛЬКО С ДОНАТОМ целый час..." },
-  { id: "aydDdPdG8ao", title: "Roblox Rivals, но АБСОЛЮТНО ВСЕ РАНДОМНОЕ.." },
-  { id: "LLUXYmHoUUM", title: "Я Дал ПОДПИСЧИКАМ Выбрать Мое СНАРЯЖЕНИЕ В Ривалс" },
-  { id: "_GP8znACX70", title: "ТРЕНИРУЮ 10 LVL ФЕЙСТ Играть в RIVALS!" },
-  { id: "IVFNmWmGr9M", title: "Я Прокачал Аккаунт ДЕВУШКИ в RIvals!" },
-  { id: "RZNm42cCqMk", title: "Я УКРАЛ ВСЕ СНАРЯЖЕНИЕ СВОИХ ВРАГОВ В RIVALS!" },
-  { id: "Atz7PbbhVzU", title: "Меня тренирует топ-1 игрок Rivals из СНГ… ЧАСТЬ #2" },
-  { id: "aUbq5WXHmeg", title: "Я КУПИЛ САМЫЙ ДОРОГОЙ Скин в RIVALS ❄️" },
-  { id: "39BVZyqhX0Y", title: "Я прошел КАЛИБРОВКУ в 2 СЕЗОНЕ" },
-  { id: "IFFxmG0m3DA", title: "Я РАЗБЛОКИРОВАЛ ВСЁ в Новогоднем обновлении 2 СЕЗОНА! 😱" },
-  { id: "7vareq7lAys", title: "Rivals НО Мои ОРУЖИЯ Рандомные… #3" },
-  { id: "sF8MTg1W18k", title: "Выполняю ЗАДАНИЯ От ПОДПИСЧИКОВ В РИВАЛС 😱" },
-  { id: "4M96l3jCJpU", title: "Зашёл в обновление Зомби-башня в Roblox Rivals! (0,01%)" },
-  { id: "oOgt13kUCZA", title: "🎃 Открываю кейсы в Хэллоуинском обновлении!" },
-  { id: "klVGPBBBjNs", title: "НЕЙРОСЕТЬ Управляет МНОЙ в Roblox Rivals!" },
-  { id: "gVUQSemCPbc", title: "Я протестировал ГЕЙМПАД в Roblox Rivals — ЭТО ЧИТЕРСТВО!" },
-  { id: "lDU-d6gzOfA", title: "ТРЕНИРУЮ Свою ДЕВУШКУ Играть в RIVALS!" },
-  { id: "imB4e1YXXeI", title: "Открываю БАТЛ ПАСС в Обновлении 1 СЕЗОНА!" },
-  { id: "i0em-HXTDKk", title: "Roblox Rivals, НО Только с 1 ОРУЖИЕМ!" },
-  { id: "Vq2Tr73XHYk", title: "Roblox Rivals, но я играю только с КЕЙ ОРУЖИЕМ.." },
-  { id: "TO53R5iAaQM", title: "Roblox Rivals, но ПОДПИСЧИКИ выбирают мне СНАРЯЖЕНИЕ.." },
-  { id: "SUtnVhbpY7Y", title: "Каждая игра = случайный минус! (Roblox Rivals)" },
-  { id: "lc2JP8BXqa4", title: "Я раскрыл СЕКРЕТНЫЕ AIMBOT НАСТРОЙКИ в Roblox Rivals.." },
-  { id: "-13qI_rfgQs", title: "Я попробовал играть БЕЗ ДОНАТА целый час..." },
-  { id: "SobbMXnbuBg", title: "Roblox Rivals, но СНАРЯЖЕНИЕ РАНДОМНОЕ.." },
-  { id: "0TdRAKbsRmg", title: "1 ЮТУБЕР против 10 ПОДПИСЧИКОВ в Roblox Rivals!" },
-  { id: "Undjw2i9f2M", title: "Я разблокировал ФЕНИКС РАЙФЛ в Roblox Rivals.. (0.01%)" },
-  { id: "ai1pLw1r0pg", title: "Я открыл ЗОЛОТОЕ СНАРЯЖЕНИЕ в Roblox Rivals.. (0.001%)" },
-  { id: "PjrRB4lFswc", title: "Разблокировал ВСЕ танцы в обновлении с ЭМОЦИЯМИ!" },
-  { id: "AvCXwvq5Tm4", title: "Roblox Rivals, НО МОЙ ПРИЦЕЛ СЛУЧАЙНЫЙ.." },
-  { id: "t96PiQHgnfM", title: "Режим с БЕСКОНЕЧНЫМИ СНАРЯЖЕНИЕМ Вернулся!" },
-  { id: "YKIZxJ6BFjA", title: "Смогу ли я Выиграть в Rivals Без Прыжков?!" },
-  { id: "_8rBN_jecIs", title: "Побеждаю на КАЖДОЙ КАРТЕ в Rivals!" },
-  { id: "lIDpYBaYpYg", title: "Смогу ли я Прокачаться в РАНКЕД за 1 Час Без Доната?" },
-  { id: "EXePOR-TSII", title: "Roblox Rivals но у меня ТОЛЬКО ОДНА ЖИЗНЬ..." },
-  { id: "AJy798ooZfA", title: "Выиграй Меня и Забери СКИН КЕЙС в Roblox Rivals!" },
-  { id: "3sR4p0C3IZs", title: "Как СТАТЬ ПРО в Roblox Rivals" },
-  { id: "_iGmfWqtoy0", title: "Как Сделать СВОЕ НЕБО в Roblox Rivals" },
-  { id: "pErF_pBjRxc", title: "Я сделал килл с каждого оружия в Rivals!" },
-  { id: "e3d3J8bzUco", title: "Я ПРИТВОРИЛСЯ ЧИТЕРОМ ПЕРЕД НУБАМИ в RIVALS!" },
-  { id: "qHI1z5WjM0M", title: "Я Прокачал Аккаунт ПОДПИСЧИКА в RIvals!" },
-  { id: "RrDSChs5Sgk", title: "Я Зашёл на САМЫЙ БОГАТЫЙ Аккаунт в Roblox Rivals!" },
-  { id: "0BCqYhumimE", title: "Секретные пушки в новом RNG режиме Rivals!" },
-  { id: "InZpySSAeo0", title: "Мне подарили дробовик за 5000 Робуксов в Rivals..." },
-  { id: "qygxeRZnLDU", title: "Новая \"Игра в кальмара\" в Rivals — выжил!" },
-  { id: "zG0L7xgV9B8", title: "Меня тренирует топ-2 игрок Rivals из СНГ…" },
-  { id: "FPfcrskAh60", title: "Я ПОЛУЧИЛ ЗОЛОТОЙ АК47 В RIVALS" },
-  { id: "LzCdtlVNs88", title: "Первый СНГ клан в Rivals" },
-  { id: "zv3i70kHXCQ", title: "Rivals НО Мои ОРУЖИЯ Рандомные..." },
-  { id: "X9qZOsSxu-w", title: "*ЛУЧШИЕ* настройки Bloxstrap, чтобы УВЕЛИЧИТЬ FPS" },
-  { id: "SvzprJ1RUyM", title: "РИВАЛС УМИРАЕТ 😱 (2025)" },
-  { id: "Qwmb-HiQELs", title: "РИВАЛС НО Я ИГРАЮ БЕЗ ДОНАТА" },
-  { id: "A8mCwAqndZc", title: "ПРИТВОРИЛСЯ ЧИТЕРОМ В РОБЛОКС (Ривалс)" },
-  { id: "yow9KEzFf3M", title: "СЕКРЕТНЫЕ ФИШКИ В РИВАЛС 😱 (РОБЛОКС)" },
-  { id: "Xh34QH8C2-I", title: "ЗАКАЗАЛ ТРЕНЕРА В РОБЛОКС 😱" },
-  { id: "Ey-Jw6_Vw1k", title: "ЛУЧШИЕ СОВЕТЫ НОВИЧКУ В ROBLOX RIVALS" },
+  { id: "Ey-Jw6_Vw1k", title: "ЛУЧШИЕ СОВЕТЫ НОВИЧКУ В ROBLOX RIVALS", dur: "3:53" },
+  { id: "Xh34QH8C2-I", title: "ЗАКАЗАЛ ТРЕНЕРА В РОБЛОКС 😱", dur: "11:45" },
+  { id: "yow9KEzFf3M", title: "СЕКРЕТНЫЕ ФИШКИ В РИВАЛС 😱 (РОБЛОКС)", dur: "7:23" },
+  { id: "A8mCwAqndZc", title: "ПРИТВОРИЛСЯ ЧИТЕРОМ В РОБЛОКС (Ривалс)", dur: "7:16" },
+  { id: "Qwmb-HiQELs", title: "РИВАЛС НО Я ИГРАЮ БЕЗ ДОНАТА", dur: "9:03" },
+  { id: "SvzprJ1RUyM", title: "РИВАЛС УМИРАЕТ 😱 (2025)", dur: "6:05" },
+  { id: "X9qZOsSxu-w", title: "*ЛУЧШИЕ* настройки Bloxstrap, чтобы УВЕЛИЧИТЬ FPS в Roblox Rivals!", dur: "6:37" },
+  { id: "zv3i70kHXCQ", title: "Rivals НО Мои ОРУЖИЯ Рандомные...", dur: "11:20" },
+  { id: "LzCdtlVNs88", title: "Первый СНГ клан в Rivals", dur: "16:52" },
+  { id: "FPfcrskAh60", title: "Я ПОЛУЧИЛ ЗОЛОТОЙ АК47 В RIVALS", dur: "11:22" },
+  { id: "zG0L7xgV9B8", title: "Меня тренирует топ-2 игрок Rivals из СНГ…", dur: "9:29" },
+  { id: "qygxeRZnLDU", title: "Новая \"Игра в кальмара\" в Rivals — выжил!", dur: "10:53" },
+  { id: "InZpySSAeo0", title: "Мне подарили дробовик за 5000 Робуксов в Rivals...", dur: "11:58" },
+  { id: "0BCqYhumimE", title: "Секретные пушки в новом RNG режиме Rivals!", dur: "12:31" },
+  { id: "RrDSChs5Sgk", title: "Я Зашёл на САМЫЙ БОГАТЫЙ Аккаунт в Roblox Rivals!", dur: "12:01" },
+  { id: "qHI1z5WjM0M", title: "Я Прокачал Аккаунт ПОДПИСЧИКА в RIvals!", dur: "15:20" },
+  { id: "e3d3J8bzUco", title: "Я ПРИТВОРИЛСЯ ЧИТЕРОМ ПЕРЕД НУБАМИ в RIVALS!", dur: "9:28" },
+  { id: "pErF_pBjRxc", title: "Я сделал килл с каждого оружия в Rivals!", dur: "21:23" },
+  { id: "_iGmfWqtoy0", title: "Как Сделать СВОЕ НЕБО в Roblox Rivals", dur: "9:11" },
+  { id: "3sR4p0C3IZs", title: "Как СТАТЬ ПРО в Roblox Rivals", dur: "12:01" },
+  { id: "AJy798ooZfA", title: "Выиграй Меня и Забери СКИН КЕЙС в Roblox Rivals!", dur: "13:22" },
+  { id: "EXePOR-TSII", title: "Roblox Rivals но у меня ТОЛЬКО ОДНА ЖИЗНЬ...", dur: "7:27" },
+  { id: "lIDpYBaYpYg", title: "Смогу ли я Прокачаться в РАНКЕД за 1 Час Без Доната? (Roblox Rivals)", dur: "17:01" },
+  { id: "_8rBN_jecIs", title: "Побеждаю на КАЖДОЙ КАРТЕ в Rivals!", dur: "24:53" },
+  { id: "YKIZxJ6BFjA", title: "Смогу ли я Выиграть в Rivals Без Прыжков?!", dur: "9:51" },
+  { id: "t96PiQHgnfM", title: "Режим с БЕСКОНЕЧНЫМИ СНАРЯЖЕНИЕМ Вернулся! (Roblox Rivals)", dur: "12:29" },
+  { id: "AvCXwvq5Tm4", title: "Roblox Rivals, НО МОЙ ПРИЦЕЛ СЛУЧАЙНЫЙ..", dur: "13:09" },
+  { id: "PjrRB4lFswc", title: "Разблокировал ВСЕ танцы в обновлении с ЭМОЦИЯМИ! (Roblox Rivals)", dur: "15:12" },
+  { id: "ai1pLw1r0pg", title: "Я открыл ЗОЛОТОЕ СНАРЯЖЕНИЕ в Roblox Rivals.. (0.001%)", dur: "11:23" },
+  { id: "Undjw2i9f2M", title: "Я разблокировал ФЕНИКС РАЙФЛ в Roblox Rivals.. (0.01%)", dur: "15:00" },
+  { id: "0TdRAKbsRmg", title: "1 ЮТУБЕР против 10 ПОДПИСЧИКОВ в Roblox Rivals!", dur: "17:28" },
+  { id: "SobbMXnbuBg", title: "Roblox Rivals, но СНАРЯЖЕНИЕ РАНДОМНОЕ..", dur: "14:23" },
+  { id: "-13qI_rfgQs", title: "Я попробовал играть БЕЗ ДОНАТА целый час... (Roblox Rivals)", dur: "16:43" },
+  { id: "lc2JP8BXqa4", title: "Я раскрыл СЕКРЕТНЫЕ AIMBOT НАСТРОЙКИ в Roblox Rivals..", dur: "11:34" },
+  { id: "SUtnVhbpY7Y", title: "Каждая игра = случайный минус! (Roblox Rivals)", dur: "13:46" },
+  { id: "TO53R5iAaQM", title: "Roblox Rivals, но ПОДПИСЧИКИ выбирают мне СНАРЯЖЕНИЕ..", dur: "16:47" },
+  { id: "Vq2Tr73XHYk", title: "Roblox Rivals, но я играю только с КЕЙ ОРУЖИЕМ..", dur: "14:47" },
+  { id: "i0em-HXTDKk", title: "Roblox Rivals, НО Только с 1 ОРУЖИЕМ!", dur: "19:15" },
+  { id: "imB4e1YXXeI", title: "Открываю БАТЛ ПАСС в Обновлении 1 СЕЗОНА! (Roblox Rivals)", dur: "18:17" },
+  { id: "lDU-d6gzOfA", title: "ТРЕНИРУЮ Свою ДЕВУШКУ Играть в RIVALS!", dur: "20:53" },
+  { id: "gVUQSemCPbc", title: "Я протестировал ГЕЙМПАД в Roblox Rivals — ЭТО ЧИТЕРСТВО!", dur: "17:02" },
+  { id: "klVGPBBBjNs", title: "НЕЙРОСЕТЬ Управляет МНОЙ в Roblox Rivals!", dur: "21:17" },
+  { id: "oOgt13kUCZA", title: "🎃 Открываю кейсы в Хэллоуинском обновлении! (Roblox Rivals)", dur: "24:23" },
+  { id: "4M96l3jCJpU", title: "Зашёл в обновление Зомби-башня в Roblox Rivals! (0,01%)", dur: "21:42" },
+  { id: "sF8MTg1W18k", title: "Выполняю ЗАДАНИЯ От ПОДПИСЧИКОВ В РИВАЛС 😱", dur: "22:20" },
+  { id: "7vareq7lAys", title: "Rivals НО Мои ОРУЖИЯ Рандомные… #3", dur: "21:12" },
+  { id: "IFFxmG0m3DA", title: "Я РАЗБЛОКИРОВАЛ ВСЁ в Новогоднем обновлении 2 СЕЗОНА! 😱 (Roblox Rivals)", dur: "21:30" },
+  { id: "39BVZyqhX0Y", title: "Я прошел КАЛИБРОВКУ в 2 СЕЗОНЕ (Roblox Rivals)", dur: "18:56" },
+  { id: "aUbq5WXHmeg", title: "Я КУПИЛ САМЫЙ ДОРОГОЙ Скин в RIVALS ❄️", dur: "19:59" },
+  { id: "Atz7PbbhVzU", title: "Меня тренирует топ-1 игрок Rivals из СНГ… ЧАСТЬ #2", dur: "17:16" },
+  { id: "RZNm42cCqMk", title: "Я УКРАЛ ВСЕ СНАРЯЖЕНИЕ СВОИХ ВРАГОВ В RIVALS!", dur: "22:35" },
+  { id: "IVFNmWmGr9M", title: "Я Прокачал Аккаунт ДЕВУШКИ в RIvals!", dur: "23:12" },
+  { id: "_GP8znACX70", title: "ТРЕНИРУЮ 10 LVL ФЕЙСТ Играть в RIVALS!", dur: "22:32" },
+  { id: "LLUXYmHoUUM", title: "Я Дал ПОДПИСЧИКАМ Выбрать Мое СНАРЯЖЕНИЕ В Ривалс", dur: "17:14" },
+  { id: "aydDdPdG8ao", title: "Roblox Rivals, но АБСОЛЮТНО ВСЕ РАНДОМНОЕ..", dur: "21:46" },
+  { id: "Pm15uV9fyjE", title: "Я попробовал играть ТОЛЬКО С ДОНАТОМ целый час... (Roblox Rivals)", dur: "20:05" },
+  { id: "2bgQCh4SNqs", title: "Я Дал НУБУ Управлять МНОЙ В РИВАЛС 24 ЧАСА!", dur: "29:08" },
+  { id: "RFp8ow0aqBo", title: "Ежедневный Магазин ВЫБИРАЕТ Мне СНАРЯЖЕНИЕ В Roblox Rivals!", dur: "25:34" },
+  { id: "E9llECq4J6g", title: "Я ВЫЙГРАЛ С КАЖДЫМ ДОНАТ НАБОРОМ В РИВАЛС!", dur: "25:18" },
+  { id: "pw-mYGvgvpE", title: "С КАЖДОЙ ПОБЕДОЙ МОЕ СНАРЯЖЕНИЕ СТАНОВИТСЯ ЛУЧШЕ (Roblox Rivals)", dur: "18:55" },
+  { id: "4qS28_W7qDA", title: "Я ОТКРЫЛ ВСЁ в САМОМ БОЛЬШОМ ОБНОВЛЕНИИ Roblox Rivals!", dur: "17:41" },
+  { id: "lbmFHLbNNJY", title: "2 ЮТУБЕРА VS ПОДПИСЧИКИ В (Roblox Rivals)", dur: "20:56" },
+  { id: "-m12ibdmbhk", title: "СКИН КЕЙСЫ ВЫБИРАЮТ МНЕ СНАРЯЖЕНИЕ В (Roblox Rivals)", dur: "18:55" },
+  { id: "hsvUo2X7p1c", title: "СМОГУ ЛИ Я ПОБЕДИТЬ НОВОГО ТОП-1 ИГРОКА В RIVALS?", dur: "25:15" },
+  { id: "AUl5LAOZmcY", title: "Я УСТРОИЛ ТУРНИР НА 10.000 РОБУКСОВ В РИВАЛС!", dur: "29:04" },
+  { id: "0tlK0KLp8vw", title: "Я ПОЛУЧИЛ САМЫЙ РЕДКИЙ ЧАРМ В РИВАЛС!", dur: "19:07" },
+  { id: "GfVYCsdnswY", title: "Я СКУПИЛ ВСЁ В ОБНОВЛЕНИИ НА ДЕНЬ СВЯТОГО ПАТРИКА В ROBLOX RIVALS!", dur: "19:58" },
+  { id: "wgWN0HhkAgQ", title: "Я ЗАШЕЛ ВО ВСЕ КОПИИ РИВАЛС!", dur: "21:07" },
+  { id: "fvnljH4hydY", title: "Я СДЕЛАЛ 100 ПОБЕД ПОДРЯД В РИВАЛС!", dur: "28:31" },
+  { id: "Ho6TEi4esKI", title: "Я ПОДОБРАЛ ЛУЧШИЙ СКИН ПОД КАЖДОЕ ОРУЖИЕ В (Roblox Rivals)!", dur: "21:53" },
+  { id: "sqnOPkKL4yU", title: "Я ПОДОБРАЛ ЛУЧШИЙ СКИН ПОД КАЖДОЕ ОРУЖИЕ 2 ЧАСТЬ (Roblox Rivals)!", dur: "21:55" },
+  { id: "l5Kw_8cm_Yk", title: "Rivals RNG Но У Меня Всего ОДНА ПОПЫТКА!", dur: "22:31" },
+  { id: "8EkgjS1VLyI", title: "Колесо Фортуны Выбирает МОЙ ЧЕЛЛЕНДЖ В Rivals!", dur: "20:01" },
+  { id: "2bB3kKxoWLM", title: "Я ОТКРЫЛ ВСЁ в ОБНОВЛЕНИИ 3 СЕЗОНА Roblox Rivals!", dur: "20:04" },
+  { id: "ISFAGpN4sso", title: "Я прошел КАЛИБРОВКУ в 3 СЕЗОНЕ (Roblox Rivals)", dur: "22:11" },
+  { id: "Uy6rE5GfB74", title: "Я Выиграл С КАЖДЫМ Скином На СНАЙПУ в Roblox Rivals!", dur: "16:24" },
+  { id: "hEu5c4stvKk", title: "Побеждаю с КАЖДЫМ СЕТОМ в Roblox Rivals!", dur: "19:04" },
+  { id: "2loI48C-2tY", title: "RIVALS, Но У Нас Есть 1 ЖЕЛАНИЕ!", dur: "22:55" },
+  { id: "IGqr8MMDvjM", title: "Ривалс, Но Мои Противники УМНОЖАЮТСЯ..!", dur: "19:55" },
+  { id: "iXP4g2HbSkc", title: "СМОГУ ЛИ Я  ПОБЕДИТЬ БРУКЛЕНА В RIVALS ?", dur: "20:22" },
+  { id: "fqY8sL93nFY", title: "Я СЫГРАЛ 1 НА 1 ПРОТИВ КАЖДОГО РАНГА В RIVALS!", dur: "13:32" },
+  { id: "dGBcpwjg23A", title: "ВЫЖИВИ В ПРЯТКАХ И ПОЛУЧИ СКИН КЕЙС! (РИВАЛС)", dur: "15:07" },
+  { id: "xmN_aeSiUiY", title: "Ривалс Но МОЯ ДЕВУШКА Выбирает Мне СНАРЯЖЕНИЕ!", dur: "13:10" },
+  { id: "qgyowAYLYZE", title: "СМОГУ ЛИ Я СТАТЬ ПРО НА НОЖЕ за 24 ЧАСА..? (RIVALS)", dur: "12:59" },
+  { id: "xzBiCx6glbM", title: "Я раскрыл СЕКРЕТНЫЕ AIMBOT НАСТРОЙКИ в Roblox Rivals..", dur: "11:48" },
+  { id: "uuhKxSrIw5Q", title: "Я ПРОКАЧАЛ Своего ПОДПИСЧИКА На 100,000R$ в Roblox RIvals!", dur: "11:45" },
+  { id: "GC1BTqk6q6I", title: "Я ВПЕРВЫЕ ИГРАЮ в Rivals С ТЕЛЕФОНА...", dur: "11:48" },
+  { id: "hwJ4gynd2w0", title: "Я ИГРАЮ НА МАКСИМАЛЬНОЙ СЛОЖНОСТИ ПРОТИВ СВОЕЙ ДЕВУШКИ В РИВАЛС!", dur: "13:44" },
+  { id: "2Zns6yXiXoU", title: "Я ВКЛЮЧИЛ ЧИТЫ ПРОТИВ СВОЕЙ ДЕВУШКИ В RIVALS…", dur: "12:46" },
+  { id: "94WWCKs5TSo", title: "СМОЖЕТ ЛИ НЕЙРОСЕТЬ АПНУТЬ МНЕ РАНГ В RIVALS?", dur: "12:21" },
+  { id: "hNQ-RSpDEfo", title: "Я ЗАШЁЛ В НОВЫЙ RIVALS KIDS…", dur: "11:48" },
+  { id: "8-yQnNjfEQI", title: "Я КУПИЛ ВСЁ В САМОМ КРУПНОМ ЛЕТНЕМ ОБНОВЛЕНИИ ROBLOX RIVALS!", dur: "12:09" },
+  { id: "F-CSqIKgZ_g", title: "Я ПРИТВОРИЛСЯ ЧИТЕРОМ В RIVALS KIDS...", dur: "12:17" },
+  { id: "pul7qw0OgBw", title: "СНАЙПА ТЕПЕРЬ ИМБА В RIVALS...", dur: "11:04" },
+  { id: "vJU4HQZ_qng", title: "Я ЗАШЕЛ В RIVALS С ALIEXPRESS...", dur: "13:02" },
+  { id: "E8Ovb_Gfv2w", title: "Я НАШЁЛ ЛУЧШИЕ САЙТЫ ДЛЯ ПОКУПКИ РОБУКСОВ В 2026", dur: "7:42" },
+  { id: "U8l9z1GWm7Y", title: "Я ПОБЕДИЛ В КАЖДОМ РЕЖИМЕ РИВАЛС!", dur: "14:37" },
+  { id: "CBXN-ctAoQQ", title: "НОВОЕ ЛУЧШЕЕ СНАРЯЖЕНИЕ В RIVALS!", dur: "12:18" },
+  { id: "ZwqqqzaASnM", title: "0 КЛЮЧЕЙ VS 99,000 КЛЮЧЕЙ СНАРЯЖЕНИЕ В Roblox Rivals!", dur: "13:07" },
+  { id: "Yx6mTl-wENA", title: "Это НОВОЕ Оружие Имба В РИВАЛС...", dur: "13:12" },
+  { id: "cJ6m3Hq3GEY", title: "Я ВЗЛОМАЛ РИВАЛС...", dur: "14:13" },
+  { id: "p0hHwOD9lqc", title: "Мeня ЗАБАНИЛИ в Rivals..(реально)", dur: "5:15" },
+  { id: "670QK2FxA4A", title: "Я НАШЕЛ ЛУЧШИЙ RIVALS MODDED (есть звуки)", dur: "14:45" },
+  { id: "9m_tUMZ36JU", title: "Победил с КАЖДЫМ скином на штурмовую винтовку в Rivals Modded..", dur: "16:13" },
+  { id: "CJ94CjM-YI4", title: "Я СТАЛ #1 ИГРОКОМ В RIVALS MODDED!", dur: "16:51" },
+  { id: "esyHKuQE4Tg", title: "СКИН КЕЙСЫ ВЫБИРАЮТ МОЕ СНАРЯЖЕНИЕ В RIVALS MODDED!", dur: "11:12" },
+  { id: "vdQR9pDVASs", title: "Сколько КЛЮЧЕЙ Я Смогу Получить ЗА 1 ЧАС?", dur: "13:49" },
+  { id: "d0RtadmZc5s", title: "Я ЗАШЕЛ В RIVALS В ВР ОЧКАХ!", dur: "11:03" },
 ];
 
-// ============================================================
-// КОНСТАНТЫ
-// ============================================================
-const EMBED_HOST = 'www.yout-ube.com';    // откуда грузим iframe
-const GIST_FILE  = 'rin-progress.json';   // имя файла в гисте
+const EMBED_HOST = 'www.yout-ube.com';
+const GIST_FILE  = 'rin-progress.json';
 const LS_TOKEN   = 'rin_gh_token';
 const LS_GIST    = 'rin_gh_gist';
 const LS_LOCAL   = 'rin_local_state';
 
-// ============================================================
-// СОСТОЯНИЕ
-// ============================================================
-let state = { currentIndex: 0, videos: {} };
+let state = { currentIndex: 0, videos: {}, customIds: {} };
 let saveTimer = null;
-let syncState = 'idle'; // idle | syncing | ok | err | local
 
 const $ = id => document.getElementById(id);
 
-// ============================================================
-// GITHUB API
-// ============================================================
 async function ghFetch(path, options = {}) {
   const token = localStorage.getItem(LS_TOKEN);
   if (!token) throw new Error('Нет токена');
@@ -290,9 +289,7 @@ async function saveToGist(gistId) {
   await ghFetch(`/gists/${gistId}`, {
     method: 'PATCH',
     body: JSON.stringify({
-      files: {
-        [GIST_FILE]: { content: JSON.stringify(state, null, 2) },
-      },
+      files: { [GIST_FILE]: { content: JSON.stringify(state, null, 2) } },
     }),
   });
 }
@@ -303,21 +300,15 @@ async function createNewGist() {
     body: JSON.stringify({
       description: 'РИН tracker progress',
       public: false,
-      files: {
-        [GIST_FILE]: { content: JSON.stringify(state, null, 2) },
-      },
+      files: { [GIST_FILE]: { content: JSON.stringify(state, null, 2) } },
     }),
   });
 }
 
-// ============================================================
-// СИНХРОНИЗАЦИЯ
-// ============================================================
 function setSyncBadge(kind, text) {
   const b = $('sync-badge');
   b.className = 'badge ' + (kind || '');
   b.textContent = text || '—';
-  syncState = kind;
 }
 
 function scheduleGistSave() {
@@ -345,15 +336,16 @@ function persistLocal() {
   try { localStorage.setItem(LS_LOCAL, JSON.stringify(state)); } catch (e) {}
 }
 
-// ============================================================
-// РАБОТА С ВИДЕО
-// ============================================================
-function getVideoState(id) {
-  return state.videos[id] || { watched: false, seconds: 0 };
+function getVideoId(v) {
+  return v.id || (state.customIds || {})[v.title] || null;
 }
 
-function setVideoState(id, upd) {
-  state.videos[id] = { ...getVideoState(id), ...upd };
+function getVideoState(key) {
+  return state.videos[key] || { watched: false, seconds: 0 };
+}
+
+function setVideoState(key, upd) {
+  state.videos[key] = { ...getVideoState(key), ...upd };
   persistLocal();
   scheduleGistSave();
 }
@@ -376,16 +368,15 @@ function formatTimecode(sec) {
   return `${m}:${String(s).padStart(2, '0')}`;
 }
 
-// ============================================================
-// РЕНДЕР
-// ============================================================
 function render() {
   const idx = Math.max(0, Math.min(state.currentIndex, VIDEOS.length - 1));
   state.currentIndex = idx;
   const v = VIDEOS[idx];
-  const vs = getVideoState(v.id);
+  const videoId = getVideoId(v);
+  const key = videoId || v.title;
+  const vs = getVideoState(key);
 
-  $('player').src = `https://${EMBED_HOST}/watch?v=${v.id}`;
+  $('player').src = `https://${EMBED_HOST}/watch?v=${videoId}`;
   $('title').textContent = v.title;
   $('counter').textContent = `${idx + 1} / ${VIDEOS.length}`;
   $('timecode').value = vs.seconds ? formatTimecode(vs.seconds) : '';
@@ -393,13 +384,18 @@ function render() {
   const list = $('list');
   list.innerHTML = '';
   VIDEOS.forEach((vid, i) => {
-    const s = getVideoState(vid.id);
+    const k = getVideoId(vid) || vid.title;
+    const s = getVideoState(k);
     const div = document.createElement('div');
-    div.className = 'video-item' + (i === idx ? ' active' : '') + (s.watched ? ' watched' : '');
+    div.className = 'video-item'
+      + (i === idx ? ' active' : '')
+      + (s.watched ? ' watched' : '');
+    const progress = s.seconds ? `<span class="time-badge">${formatTimecode(s.seconds)}</span>` : '';
+    const dur = vid.dur ? `<span class="dur">${vid.dur}</span>` : '';
     div.innerHTML = `
       <span class="num">${i + 1}</span>
       <span class="title">${vid.title.replace(/</g, '&lt;')}</span>
-      <span class="time-badge">${s.seconds ? formatTimecode(s.seconds) : ''}</span>
+      ${progress}${dur}
       <span class="check">${s.watched ? '✓' : ''}</span>
     `;
     div.onclick = () => {
@@ -411,13 +407,10 @@ function render() {
     list.appendChild(div);
   });
 
-  const watched = VIDEOS.filter(x => getVideoState(x.id).watched).length;
+  const watched = VIDEOS.filter(x => getVideoState(getVideoId(x) || x.title).watched).length;
   $('stats').textContent = `${watched} / ${VIDEOS.length} просмотрено`;
 }
 
-// ============================================================
-// ОБРАБОТЧИКИ
-// ============================================================
 $('prev-btn').onclick = () => {
   if (state.currentIndex > 0) {
     state.currentIndex--;
@@ -438,7 +431,8 @@ $('next-btn').onclick = () => {
 
 $('watched-btn').onclick = () => {
   const v = VIDEOS[state.currentIndex];
-  setVideoState(v.id, { watched: true });
+  const key = getVideoId(v) || v.title;
+  setVideoState(key, { watched: true });
   if (state.currentIndex < VIDEOS.length - 1) state.currentIndex++;
   persistLocal();
   render();
@@ -446,15 +440,17 @@ $('watched-btn').onclick = () => {
 
 $('timecode').addEventListener('input', () => {
   const v = VIDEOS[state.currentIndex];
+  const key = getVideoId(v) || v.title;
   const sec = parseTimecode($('timecode').value);
-  if (sec !== null) setVideoState(v.id, { seconds: sec });
+  if (sec !== null) setVideoState(key, { seconds: sec });
 });
 
 $('timecode').addEventListener('blur', () => {
   const v = VIDEOS[state.currentIndex];
+  const key = getVideoId(v) || v.title;
   const sec = parseTimecode($('timecode').value);
   if (sec !== null) {
-    setVideoState(v.id, { seconds: sec });
+    setVideoState(key, { seconds: sec });
     $('timecode').value = formatTimecode(sec);
   }
 });
@@ -481,9 +477,6 @@ $('share-btn').onclick = async () => {
   }
 };
 
-// ============================================================
-// SETUP
-// ============================================================
 function showSetupError(msg) {
   $('setup-error').textContent = msg || '';
 }
@@ -499,7 +492,7 @@ $('setup-connect').onclick = async () => {
   const token = $('setup-token').value.trim();
   let gistId = $('setup-gist').value.trim();
 
-  if (!token || !token.startsWith('ghp_') && !token.startsWith('github_pat_')) {
+  if (!token || (!token.startsWith('ghp_') && !token.startsWith('github_pat_'))) {
     showSetupError('Введите корректный токен (ghp_... или github_pat_...)');
     return;
   }
@@ -509,19 +502,17 @@ $('setup-connect').onclick = async () => {
   $('setup-connect').textContent = 'Подключение…';
 
   try {
-    // если gist ID задан — проверяем, что он есть
     if (gistId) {
       try {
         const existing = await loadFromGist(gistId);
         if (existing && typeof existing === 'object') {
-          // беремо стан з гіста (у ньому свіжіші дані, ніж локально)
           state = {
             currentIndex: existing.currentIndex || 0,
             videos: existing.videos || {},
+            customIds: existing.customIds || {},
           };
         }
       } catch (e) {
-        // если gist не существует — возможно, опечатка
         if (String(e).includes('404')) {
           showSetupError('Гист не найден. Проверь ID или оставь поле пустым, чтобы создать новый.');
           $('setup-connect').disabled = false;
@@ -532,7 +523,6 @@ $('setup-connect').onclick = async () => {
       }
       localStorage.setItem(LS_GIST, gistId);
     } else {
-      // создаём новый гист
       const gist = await createNewGist();
       gistId = gist.id;
       localStorage.setItem(LS_GIST, gistId);
@@ -542,7 +532,6 @@ $('setup-connect').onclick = async () => {
     $('setup-overlay').style.display = 'none';
     setSyncBadge('ok', '☁️ Сохранено');
     startApp();
-    // обновляем URL, чтоб при следующем заходе было ?gist=...
     const u = new URL(location.href);
     u.searchParams.set('gist', gistId);
     history.replaceState(null, '', u.toString());
@@ -555,40 +544,38 @@ $('setup-connect').onclick = async () => {
   }
 };
 
-// ============================================================
-// СТАРТ
-// ============================================================
 function startApp() {
   $('app').style.display = 'block';
   render();
 }
 
 (async () => {
-  // 1) подтягиваем ?gist= из URL (для нового устройства)
   const urlGist = new URL(location.href).searchParams.get('gist');
   if (urlGist && !localStorage.getItem(LS_GIST)) {
-    // если есть токен — подключаемся сразу, если нет — показываем setup с заполненным ID
     if (localStorage.getItem(LS_TOKEN)) {
       localStorage.setItem(LS_GIST, urlGist);
     }
   }
 
-  // 2) восстанавливаем локальный кеш
   try {
     const local = localStorage.getItem(LS_LOCAL);
-    if (local) state = JSON.parse(local);
+    if (local) {
+      const parsed = JSON.parse(local);
+      state = {
+        currentIndex: parsed.currentIndex || 0,
+        videos: parsed.videos || {},
+        customIds: parsed.customIds || {},
+      };
+    }
   } catch (e) {}
 
-  // 3) если токена нет — показываем setup
   if (!localStorage.getItem(LS_TOKEN)) {
-    // если в URL есть gist — предзаполняем
     if (urlGist) $('setup-gist').value = urlGist;
     $('setup-title').textContent = 'Настройка синхронизации';
     $('setup-overlay').style.display = 'flex';
     return;
   }
 
-  // 4) если токен есть — пробуем загрузить с гиста
   const gistId = localStorage.getItem(LS_GIST);
   if (gistId) {
     setSyncBadge('syncing', '🔄 Загрузка…');
@@ -598,6 +585,7 @@ function startApp() {
         state = {
           currentIndex: remote.currentIndex || 0,
           videos: remote.videos || {},
+          customIds: remote.customIds || {},
         };
         persistLocal();
         setSyncBadge('ok', '☁️ Синхронизировано');
