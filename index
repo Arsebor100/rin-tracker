@@ -1,0 +1,619 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>РИН — трекер</title>
+<style>
+  * { box-sizing: border-box; }
+  body { margin: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #0f0f0f; color: #eee; min-height: 100vh; }
+  a { color: #3ea6ff; }
+  .container { max-width: 900px; margin: 0 auto; padding: 16px; }
+  header { display: flex; justify-content: space-between; align-items: center; padding: 12px 0; border-bottom: 1px solid #333; margin-bottom: 16px; flex-wrap: wrap; gap: 8px; }
+  h1 { font-size: 20px; margin: 0; }
+  .header-right { display: flex; align-items: center; gap: 10px; font-size: 13px; color: #aaa; flex-wrap: wrap; }
+  .badge { padding: 3px 8px; border-radius: 6px; font-size: 12px; background: #222; }
+  .badge.ok { background: #14432a; color: #7ddfa3; }
+  .badge.err { background: #4a1c1c; color: #ff9a9a; }
+  .badge.syncing { background: #2a2a14; color: #e8df86; }
+  .icon-btn { background: none; border: 1px solid #333; color: #ccc; padding: 6px 10px; border-radius: 6px; cursor: pointer; font-size: 13px; font-family: inherit; }
+  .icon-btn:hover { background: #272727; }
+  .player-wrap { position: relative; width: 100%; padding-bottom: 56.25%; background: #000; border-radius: 12px; overflow: hidden; margin-bottom: 16px; }
+  .player-wrap iframe { position: absolute; inset: 0; width: 100%; height: 100%; border: 0; }
+  .video-info h2 { font-size: 18px; margin: 0 0 8px; line-height: 1.3; }
+  .video-meta { color: #aaa; font-size: 14px; margin-bottom: 16px; }
+  .progress-section { background: #1a1a1a; padding: 16px; border-radius: 12px; margin-bottom: 16px; }
+  .time-row { display: flex; align-items: center; gap: 8px; margin-bottom: 12px; flex-wrap: wrap; }
+  .time-row label { font-size: 14px; color: #aaa; white-space: nowrap; }
+  .time-row input[type=text] { flex: 1; min-width: 120px; padding: 10px 12px; border-radius: 8px; border: 1px solid #333; background: #0f0f0f; color: #eee; font-size: 16px; font-family: inherit; }
+  .time-row input[type=text]:focus { outline: none; border-color: #3ea6ff; }
+  .buttons { display: grid; grid-template-columns: 1fr 2fr 1fr; gap: 8px; }
+  button { padding: 12px 16px; border: 1px solid #333; background: #272727; color: #eee; border-radius: 8px; font-size: 14px; cursor: pointer; font-family: inherit; transition: background 0.15s; }
+  button:hover { background: #3a3a3a; }
+  button.primary { background: #3ea6ff; color: #000; border-color: #3ea6ff; font-weight: 600; }
+  button.primary:hover { background: #5bb6ff; }
+  button:disabled { opacity: 0.4; cursor: not-allowed; }
+  .video-list { display: flex; flex-direction: column; gap: 4px; margin-top: 16px; }
+  .video-item { display: flex; align-items: center; gap: 8px; padding: 8px 12px; background: #1a1a1a; border-radius: 8px; cursor: pointer; font-size: 14px; transition: background 0.15s; }
+  .video-item:hover { background: #272727; }
+  .video-item.active { background: #1e3a5f; border: 1px solid #3ea6ff; }
+  .video-item.watched { opacity: 0.55; }
+  .video-item .num { color: #666; min-width: 30px; font-size: 12px; }
+  .video-item .title { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .video-item .check { color: #4caf50; font-size: 16px; min-width: 16px; }
+  .video-item .time-badge { font-size: 12px; color: #3ea6ff; min-width: 50px; text-align: right; }
+
+  /* setup overlay */
+  .setup-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.85); display: flex; align-items: center; justify-content: center; padding: 16px; z-index: 100; overflow-y: auto; }
+  .setup-card { background: #1a1a1a; border: 1px solid #333; border-radius: 12px; padding: 24px; max-width: 520px; width: 100%; }
+  .setup-card h2 { margin: 0 0 12px; font-size: 20px; }
+  .setup-card p { color: #bbb; font-size: 14px; line-height: 1.5; margin: 8px 0; }
+  .setup-card details { background: #0f0f0f; border: 1px solid #2a2a2a; border-radius: 8px; padding: 10px 14px; margin: 12px 0; font-size: 13px; }
+  .setup-card summary { cursor: pointer; color: #3ea6ff; }
+  .setup-card details ol { margin: 8px 0 0; padding-left: 20px; color: #ccc; line-height: 1.6; }
+  .setup-card details code { background: #222; padding: 1px 5px; border-radius: 4px; font-size: 12px; }
+  .setup-card label { display: block; font-size: 13px; color: #aaa; margin: 12px 0 4px; }
+  .setup-card input[type=text], .setup-card input[type=password] { width: 100%; padding: 10px 12px; border-radius: 8px; border: 1px solid #333; background: #0f0f0f; color: #eee; font-size: 14px; font-family: inherit; }
+  .setup-card input:focus { outline: none; border-color: #3ea6ff; }
+  .setup-buttons { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 16px; }
+  .setup-error { color: #ff8a8a; font-size: 13px; margin-top: 10px; min-height: 18px; }
+  .setup-note { color: #777; font-size: 12px; margin-top: 8px; line-height: 1.4; }
+
+  @media (max-width: 600px) {
+    .container { padding: 8px; }
+    .buttons { grid-template-columns: 1fr 1fr; }
+    .buttons button:nth-child(2) { grid-column: span 2; order: -1; }
+    .setup-buttons { grid-template-columns: 1fr; }
+  }
+</style>
+</head>
+<body>
+
+<!-- ============ SETUP ============ -->
+<div class="setup-overlay" id="setup-overlay" style="display:none">
+  <div class="setup-card">
+    <h2 id="setup-title">Настройка синхронизации</h2>
+    <p>Прогресс хранится в приватном GitHub Gist и синхронизируется между устройствами. Токен остаётся только в этом браузере.</p>
+
+    <details>
+      <summary>Как получить токен (1 минута)</summary>
+      <ol>
+        <li>Открой <a href="https://github.com/settings/tokens/new" target="_blank">github.com/settings/tokens/new</a></li>
+        <li>Note: <code>rin-tracker</code></li>
+        <li>Expiration: <code>No expiration</code> (или на свой вкус)</li>
+        <li>Scopes: отметь только <code>gist</code></li>
+        <li>Generate token → скопируй <code>ghp_...</code></li>
+      </ol>
+    </details>
+
+    <label>Personal Access Token</label>
+    <input type="password" id="setup-token" placeholder="ghp_..." autocomplete="off" spellcheck="false">
+
+    <label>Gist ID <span style="color:#666">(пусто — создадим новый)</span></label>
+    <input type="text" id="setup-gist" placeholder="например a1b2c3d4e5f6..." autocomplete="off" spellcheck="false">
+
+    <div class="setup-buttons">
+      <button id="setup-connect" class="primary">Подключить</button>
+      <button id="setup-skip">Без синхронизации</button>
+    </div>
+    <div class="setup-error" id="setup-error"></div>
+    <div class="setup-note">Токен нужен только для доступа к твоим гистам. Не показывай его никому и не коммить в репозиторий.</div>
+  </div>
+</div>
+
+<!-- ============ APP ============ -->
+<div class="container" id="app" style="display:none">
+  <header>
+    <h1>РИН</h1>
+    <div class="header-right">
+      <span id="stats"></span>
+      <span class="badge" id="sync-badge">—</span>
+      <button class="icon-btn" id="share-btn" title="Скопировать ссылку для другого устройства">🔗</button>
+      <button class="icon-btn" id="settings-btn" title="Настройки">⚙️</button>
+    </div>
+  </header>
+
+  <div class="player-wrap">
+    <iframe id="player" allow="accelerometer; autoplay; encrypted-media; gyroscope; picture-in-picture; fullscreen" allowfullscreen></iframe>
+  </div>
+
+  <div class="video-info">
+    <h2 id="title">Загрузка...</h2>
+    <div class="video-meta"><span id="counter"></span></div>
+  </div>
+
+  <div class="progress-section">
+    <div class="time-row">
+      <label for="timecode">Таймкод:</label>
+      <input type="text" id="timecode" placeholder="12:34 или 1:23:45" autocomplete="off">
+    </div>
+    <div class="buttons">
+      <button id="prev-btn">← Назад</button>
+      <button id="watched-btn" class="primary">✓ Посмотрел →</button>
+      <button id="next-btn">Далее →</button>
+    </div>
+  </div>
+
+  <div class="video-list" id="list"></div>
+</div>
+
+<script>
+// ============================================================
+// СПИСОК ВИДЕО
+// ============================================================
+const VIDEOS = [
+  { id: "d0RtadmZc5s", title: "Я ЗАШЕЛ В RIVALS В VR ОЧКАХ!" },
+  { id: "vdQR9pDVASs", title: "Сколько КЛЮЧЕЙ Я Смогу Получить ЗА 1 ЧАС?" },
+  { id: "esyHKuQE4Tg", title: "СКИН КЕЙСЫ ВЫБИРАЮТ МОЕ СНАРЯЖЕНИЕ В RIVALS MODDED!" },
+  { id: "CJ94CjM-YI4", title: "Я СТАЛ #1 ИГРОКОМ В RIVALS MODDED!" },
+  { id: "9m_tUMZ36JU", title: "Победил с КАЖДЫМ скином на штурмовую винтовку в Rivals Modded.." },
+  { id: "670QK2FxA4A", title: "Я НАШЕЛ ЛУЧШИЙ RIVALS MODDED (есть звуки)" },
+  { id: "p0hHwOD9lqc", title: "Мeня ЗАБАНИЛИ в Rivals..(реально)" },
+  { id: "cJ6m3Hq3GEY", title: "Я ВЗЛОМАЛ РИВАЛС..." },
+  { id: "Yx6mTl-wENA", title: "Это НОВОЕ Оружие Имба В РИВАЛС..." },
+  { id: "ZwqqqzaASnM", title: "0 КЛЮЧЕЙ VS 99,000 КЛЮЧЕЙ СНАРЯЖЕНИЕ В Roblox Rivals!" },
+  { id: "CBXN-ctAoQQ", title: "НОВОЕ ЛУЧШЕЕ СНАРЯЖЕНИЕ В RIVALS!" },
+  { id: "U8l9z1GWm7Y", title: "Я ПОБЕДИЛ В КАЖДОМ РЕЖИМЕ РИВАЛС!" },
+  { id: "E8Ovb_Gfv2w", title: "Я НАШЁЛ ЛУЧШИЕ САЙТЫ ДЛЯ ПОКУПКИ РОБУКСОВ В 2026" },
+  { id: "vJU4HQZ_qng", title: "Я ЗАШЕЛ В RIVALS С ALIEXPRESS..." },
+  { id: "pul7qw0OgBw", title: "СНАЙПА ТЕПЕРЬ ИМБА В RIVALS..." },
+  { id: "F-CSqIKgZ_g", title: "Я ПРИТВОРИЛСЯ ЧИТЕРОМ В RIVALS KIDS..." },
+  { id: "8-yQnNjfEQI", title: "Я КУПИЛ ВСЁ В САМОМ КРУПНОМ ЛЕТНЕМ ОБНОВЛЕНИИ ROBLOX RIVALS!" },
+  { id: "hNQ-RSpDEfo", title: "Я ЗАШЁЛ В НОВЫЙ RIVALS KIDS…" },
+  { id: "94WWCKs5TSo", title: "СМОЖЕТ ЛИ НЕЙРОСЕТЬ АПНУТЬ МНЕ РАНГ В RIVALS?" },
+  { id: "2Zns6yXiXoU", title: "Я ВКЛЮЧИЛ ЧИТЫ ПРОТИВ СВОЕЙ ДЕВУШКИ В RIVALS…" },
+  { id: "hwJ4gynd2w0", title: "Я ИГРАЮ НА МАКСИМАЛЬНОЙ СЛОЖНОСТИ ПРОТИВ СВОЕЙ ДЕВУШКИ В РИВАЛС!" },
+  { id: "GC1BTqk6q6I", title: "Я ВПЕРВЫЕ ИГРАЮ в Rivals С ТЕЛЕФОНА..." },
+  { id: "uuhKxSrIw5Q", title: "Я ПРОКАЧАЛ Своего ПОДПИСЧИКА На 100,000R$ в Roblox RIvals!" },
+  { id: "xzBiCx6glbM", title: "Я раскрыл СЕКРЕТНЫЕ AIMBOT НАСТРОЙКИ в Roblox Rivals.." },
+  { id: "qgyowAYLYZE", title: "СМОГУ ЛИ Я СТАТЬ ПРО НА НОЖЕ за 24 ЧАСА..? (RIVALS)" },
+  { id: "xmN_aeSiUiY", title: "Ривалс Но МОЯ ДЕВУШКА Выбирает Мне СНАРЯЖЕНИЕ!" },
+  { id: "dGBcpwjg23A", title: "ВЫЖИВИ В ПРЯТКАХ И ПОЛУЧИ СКИН КЕЙС! (РИВАЛС)" },
+  { id: "fqY8sL93nFY", title: "Я СЫГРАЛ 1 НА 1 ПРОТИВ КАЖДОГО РАНГА В RIVALS!" },
+  { id: "iXP4g2HbSkc", title: "СМОГУ ЛИ Я ПОБЕДИТЬ БРУКЛЕНА В RIVALS ?" },
+  { id: "IGqr8MMDvjM", title: "Ривалс, Но Мои Противники УМНОЖАЮТСЯ..!" },
+  { id: "pw-mYGvgvpE", title: "С КАЖДОЙ ПОБЕДОЙ МОЕ СНАРЯЖЕНИЕ СТАНОВИТСЯ ЛУЧШЕ" },
+  { id: "E9llECq4J6g", title: "Я ВЫЙГРАЛ С КАЖДЫМ ДОНАТ НАБОРОМ В РИВАЛС!" },
+  { id: "RFp8ow0aqBo", title: "Ежедневный Магазин ВЫБИРАЕТ Мне СНАРЯЖЕНИЕ В Roblox Rivals!" },
+  { id: "2bgQCh4SNqs", title: "Я Дал НУБУ Управлять МНОЙ В РИВАЛС 24 ЧАСА!" },
+  { id: "Pm15uV9fyjE", title: "Я попробовал играть ТОЛЬКО С ДОНАТОМ целый час..." },
+  { id: "aydDdPdG8ao", title: "Roblox Rivals, но АБСОЛЮТНО ВСЕ РАНДОМНОЕ.." },
+  { id: "LLUXYmHoUUM", title: "Я Дал ПОДПИСЧИКАМ Выбрать Мое СНАРЯЖЕНИЕ В Ривалс" },
+  { id: "_GP8znACX70", title: "ТРЕНИРУЮ 10 LVL ФЕЙСТ Играть в RIVALS!" },
+  { id: "IVFNmWmGr9M", title: "Я Прокачал Аккаунт ДЕВУШКИ в RIvals!" },
+  { id: "RZNm42cCqMk", title: "Я УКРАЛ ВСЕ СНАРЯЖЕНИЕ СВОИХ ВРАГОВ В RIVALS!" },
+  { id: "Atz7PbbhVzU", title: "Меня тренирует топ-1 игрок Rivals из СНГ… ЧАСТЬ #2" },
+  { id: "aUbq5WXHmeg", title: "Я КУПИЛ САМЫЙ ДОРОГОЙ Скин в RIVALS ❄️" },
+  { id: "39BVZyqhX0Y", title: "Я прошел КАЛИБРОВКУ в 2 СЕЗОНЕ" },
+  { id: "IFFxmG0m3DA", title: "Я РАЗБЛОКИРОВАЛ ВСЁ в Новогоднем обновлении 2 СЕЗОНА! 😱" },
+  { id: "7vareq7lAys", title: "Rivals НО Мои ОРУЖИЯ Рандомные… #3" },
+  { id: "sF8MTg1W18k", title: "Выполняю ЗАДАНИЯ От ПОДПИСЧИКОВ В РИВАЛС 😱" },
+  { id: "4M96l3jCJpU", title: "Зашёл в обновление Зомби-башня в Roblox Rivals! (0,01%)" },
+  { id: "oOgt13kUCZA", title: "🎃 Открываю кейсы в Хэллоуинском обновлении!" },
+  { id: "klVGPBBBjNs", title: "НЕЙРОСЕТЬ Управляет МНОЙ в Roblox Rivals!" },
+  { id: "gVUQSemCPbc", title: "Я протестировал ГЕЙМПАД в Roblox Rivals — ЭТО ЧИТЕРСТВО!" },
+  { id: "lDU-d6gzOfA", title: "ТРЕНИРУЮ Свою ДЕВУШКУ Играть в RIVALS!" },
+  { id: "imB4e1YXXeI", title: "Открываю БАТЛ ПАСС в Обновлении 1 СЕЗОНА!" },
+  { id: "i0em-HXTDKk", title: "Roblox Rivals, НО Только с 1 ОРУЖИЕМ!" },
+  { id: "Vq2Tr73XHYk", title: "Roblox Rivals, но я играю только с КЕЙ ОРУЖИЕМ.." },
+  { id: "TO53R5iAaQM", title: "Roblox Rivals, но ПОДПИСЧИКИ выбирают мне СНАРЯЖЕНИЕ.." },
+  { id: "SUtnVhbpY7Y", title: "Каждая игра = случайный минус! (Roblox Rivals)" },
+  { id: "lc2JP8BXqa4", title: "Я раскрыл СЕКРЕТНЫЕ AIMBOT НАСТРОЙКИ в Roblox Rivals.." },
+  { id: "-13qI_rfgQs", title: "Я попробовал играть БЕЗ ДОНАТА целый час..." },
+  { id: "SobbMXnbuBg", title: "Roblox Rivals, но СНАРЯЖЕНИЕ РАНДОМНОЕ.." },
+  { id: "0TdRAKbsRmg", title: "1 ЮТУБЕР против 10 ПОДПИСЧИКОВ в Roblox Rivals!" },
+  { id: "Undjw2i9f2M", title: "Я разблокировал ФЕНИКС РАЙФЛ в Roblox Rivals.. (0.01%)" },
+  { id: "ai1pLw1r0pg", title: "Я открыл ЗОЛОТОЕ СНАРЯЖЕНИЕ в Roblox Rivals.. (0.001%)" },
+  { id: "PjrRB4lFswc", title: "Разблокировал ВСЕ танцы в обновлении с ЭМОЦИЯМИ!" },
+  { id: "AvCXwvq5Tm4", title: "Roblox Rivals, НО МОЙ ПРИЦЕЛ СЛУЧАЙНЫЙ.." },
+  { id: "t96PiQHgnfM", title: "Режим с БЕСКОНЕЧНЫМИ СНАРЯЖЕНИЕМ Вернулся!" },
+  { id: "YKIZxJ6BFjA", title: "Смогу ли я Выиграть в Rivals Без Прыжков?!" },
+  { id: "_8rBN_jecIs", title: "Побеждаю на КАЖДОЙ КАРТЕ в Rivals!" },
+  { id: "lIDpYBaYpYg", title: "Смогу ли я Прокачаться в РАНКЕД за 1 Час Без Доната?" },
+  { id: "EXePOR-TSII", title: "Roblox Rivals но у меня ТОЛЬКО ОДНА ЖИЗНЬ..." },
+  { id: "AJy798ooZfA", title: "Выиграй Меня и Забери СКИН КЕЙС в Roblox Rivals!" },
+  { id: "3sR4p0C3IZs", title: "Как СТАТЬ ПРО в Roblox Rivals" },
+  { id: "_iGmfWqtoy0", title: "Как Сделать СВОЕ НЕБО в Roblox Rivals" },
+  { id: "pErF_pBjRxc", title: "Я сделал килл с каждого оружия в Rivals!" },
+  { id: "e3d3J8bzUco", title: "Я ПРИТВОРИЛСЯ ЧИТЕРОМ ПЕРЕД НУБАМИ в RIVALS!" },
+  { id: "qHI1z5WjM0M", title: "Я Прокачал Аккаунт ПОДПИСЧИКА в RIvals!" },
+  { id: "RrDSChs5Sgk", title: "Я Зашёл на САМЫЙ БОГАТЫЙ Аккаунт в Roblox Rivals!" },
+  { id: "0BCqYhumimE", title: "Секретные пушки в новом RNG режиме Rivals!" },
+  { id: "InZpySSAeo0", title: "Мне подарили дробовик за 5000 Робуксов в Rivals..." },
+  { id: "qygxeRZnLDU", title: "Новая \"Игра в кальмара\" в Rivals — выжил!" },
+  { id: "zG0L7xgV9B8", title: "Меня тренирует топ-2 игрок Rivals из СНГ…" },
+  { id: "FPfcrskAh60", title: "Я ПОЛУЧИЛ ЗОЛОТОЙ АК47 В RIVALS" },
+  { id: "LzCdtlVNs88", title: "Первый СНГ клан в Rivals" },
+  { id: "zv3i70kHXCQ", title: "Rivals НО Мои ОРУЖИЯ Рандомные..." },
+  { id: "X9qZOsSxu-w", title: "*ЛУЧШИЕ* настройки Bloxstrap, чтобы УВЕЛИЧИТЬ FPS" },
+  { id: "SvzprJ1RUyM", title: "РИВАЛС УМИРАЕТ 😱 (2025)" },
+  { id: "Qwmb-HiQELs", title: "РИВАЛС НО Я ИГРАЮ БЕЗ ДОНАТА" },
+  { id: "A8mCwAqndZc", title: "ПРИТВОРИЛСЯ ЧИТЕРОМ В РОБЛОКС (Ривалс)" },
+  { id: "yow9KEzFf3M", title: "СЕКРЕТНЫЕ ФИШКИ В РИВАЛС 😱 (РОБЛОКС)" },
+  { id: "Xh34QH8C2-I", title: "ЗАКАЗАЛ ТРЕНЕРА В РОБЛОКС 😱" },
+  { id: "Ey-Jw6_Vw1k", title: "ЛУЧШИЕ СОВЕТЫ НОВИЧКУ В ROBLOX RIVALS" },
+];
+
+// ============================================================
+// КОНСТАНТЫ
+// ============================================================
+const EMBED_HOST = 'www.yout-ube.com';    // откуда грузим iframe
+const GIST_FILE  = 'rin-progress.json';   // имя файла в гисте
+const LS_TOKEN   = 'rin_gh_token';
+const LS_GIST    = 'rin_gh_gist';
+const LS_LOCAL   = 'rin_local_state';
+
+// ============================================================
+// СОСТОЯНИЕ
+// ============================================================
+let state = { currentIndex: 0, videos: {} };
+let saveTimer = null;
+let syncState = 'idle'; // idle | syncing | ok | err | local
+
+const $ = id => document.getElementById(id);
+
+// ============================================================
+// GITHUB API
+// ============================================================
+async function ghFetch(path, options = {}) {
+  const token = localStorage.getItem(LS_TOKEN);
+  if (!token) throw new Error('Нет токена');
+  const res = await fetch(`https://api.github.com${path}`, {
+    ...options,
+    headers: {
+      'Authorization': `Bearer ${token}`,
+      'Accept': 'application/vnd.github+json',
+      'X-GitHub-Api-Version': '2022-11-28',
+      ...(options.headers || {}),
+    },
+  });
+  if (!res.ok) {
+    const text = await res.text();
+    throw new Error(`GitHub API ${res.status}: ${text.slice(0, 200)}`);
+  }
+  return res.json();
+}
+
+async function loadFromGist(gistId) {
+  const gist = await ghFetch(`/gists/${gistId}`);
+  const file = gist.files[GIST_FILE];
+  if (!file) return null;
+  let content = file.content;
+  if (file.truncated && file.raw_url) {
+    const r = await fetch(file.raw_url);
+    content = await r.text();
+  }
+  return JSON.parse(content);
+}
+
+async function saveToGist(gistId) {
+  await ghFetch(`/gists/${gistId}`, {
+    method: 'PATCH',
+    body: JSON.stringify({
+      files: {
+        [GIST_FILE]: { content: JSON.stringify(state, null, 2) },
+      },
+    }),
+  });
+}
+
+async function createNewGist() {
+  return await ghFetch('/gists', {
+    method: 'POST',
+    body: JSON.stringify({
+      description: 'РИН tracker progress',
+      public: false,
+      files: {
+        [GIST_FILE]: { content: JSON.stringify(state, null, 2) },
+      },
+    }),
+  });
+}
+
+// ============================================================
+// СИНХРОНИЗАЦИЯ
+// ============================================================
+function setSyncBadge(kind, text) {
+  const b = $('sync-badge');
+  b.className = 'badge ' + (kind || '');
+  b.textContent = text || '—';
+  syncState = kind;
+}
+
+function scheduleGistSave() {
+  clearTimeout(saveTimer);
+  saveTimer = setTimeout(flushGistSave, 2000);
+}
+
+async function flushGistSave() {
+  const gistId = localStorage.getItem(LS_GIST);
+  if (!gistId || !localStorage.getItem(LS_TOKEN)) {
+    setSyncBadge('local', '💾 Локально');
+    return;
+  }
+  setSyncBadge('syncing', '🔄 Сохраняется…');
+  try {
+    await saveToGist(gistId);
+    setSyncBadge('ok', '☁️ Сохранено');
+  } catch (e) {
+    console.error('Save failed:', e);
+    setSyncBadge('err', '⚠️ Ошибка синхронизации');
+  }
+}
+
+function persistLocal() {
+  try { localStorage.setItem(LS_LOCAL, JSON.stringify(state)); } catch (e) {}
+}
+
+// ============================================================
+// РАБОТА С ВИДЕО
+// ============================================================
+function getVideoState(id) {
+  return state.videos[id] || { watched: false, seconds: 0 };
+}
+
+function setVideoState(id, upd) {
+  state.videos[id] = { ...getVideoState(id), ...upd };
+  persistLocal();
+  scheduleGistSave();
+}
+
+function parseTimecode(str) {
+  const parts = String(str).trim().split(':').map(Number);
+  if (!parts.length || parts.some(isNaN)) return null;
+  if (parts.length === 1) return parts[0];
+  if (parts.length === 2) return parts[0] * 60 + parts[1];
+  if (parts.length === 3) return parts[0] * 3600 + parts[1] * 60 + parts[2];
+  return null;
+}
+
+function formatTimecode(sec) {
+  sec = Math.max(0, Math.floor(sec || 0));
+  const h = Math.floor(sec / 3600);
+  const m = Math.floor((sec % 3600) / 60);
+  const s = sec % 60;
+  if (h > 0) return `${h}:${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
+  return `${m}:${String(s).padStart(2, '0')}`;
+}
+
+// ============================================================
+// РЕНДЕР
+// ============================================================
+function render() {
+  const idx = Math.max(0, Math.min(state.currentIndex, VIDEOS.length - 1));
+  state.currentIndex = idx;
+  const v = VIDEOS[idx];
+  const vs = getVideoState(v.id);
+
+  $('player').src = `https://${EMBED_HOST}/watch?v=${v.id}`;
+  $('title').textContent = v.title;
+  $('counter').textContent = `${idx + 1} / ${VIDEOS.length}`;
+  $('timecode').value = vs.seconds ? formatTimecode(vs.seconds) : '';
+
+  const list = $('list');
+  list.innerHTML = '';
+  VIDEOS.forEach((vid, i) => {
+    const s = getVideoState(vid.id);
+    const div = document.createElement('div');
+    div.className = 'video-item' + (i === idx ? ' active' : '') + (s.watched ? ' watched' : '');
+    div.innerHTML = `
+      <span class="num">${i + 1}</span>
+      <span class="title">${vid.title.replace(/</g, '&lt;')}</span>
+      <span class="time-badge">${s.seconds ? formatTimecode(s.seconds) : ''}</span>
+      <span class="check">${s.watched ? '✓' : ''}</span>
+    `;
+    div.onclick = () => {
+      state.currentIndex = i;
+      persistLocal();
+      scheduleGistSave();
+      render();
+    };
+    list.appendChild(div);
+  });
+
+  const watched = VIDEOS.filter(x => getVideoState(x.id).watched).length;
+  $('stats').textContent = `${watched} / ${VIDEOS.length} просмотрено`;
+}
+
+// ============================================================
+// ОБРАБОТЧИКИ
+// ============================================================
+$('prev-btn').onclick = () => {
+  if (state.currentIndex > 0) {
+    state.currentIndex--;
+    persistLocal();
+    scheduleGistSave();
+    render();
+  }
+};
+
+$('next-btn').onclick = () => {
+  if (state.currentIndex < VIDEOS.length - 1) {
+    state.currentIndex++;
+    persistLocal();
+    scheduleGistSave();
+    render();
+  }
+};
+
+$('watched-btn').onclick = () => {
+  const v = VIDEOS[state.currentIndex];
+  setVideoState(v.id, { watched: true });
+  if (state.currentIndex < VIDEOS.length - 1) state.currentIndex++;
+  persistLocal();
+  render();
+};
+
+$('timecode').addEventListener('input', () => {
+  const v = VIDEOS[state.currentIndex];
+  const sec = parseTimecode($('timecode').value);
+  if (sec !== null) setVideoState(v.id, { seconds: sec });
+});
+
+$('timecode').addEventListener('blur', () => {
+  const v = VIDEOS[state.currentIndex];
+  const sec = parseTimecode($('timecode').value);
+  if (sec !== null) {
+    setVideoState(v.id, { seconds: sec });
+    $('timecode').value = formatTimecode(sec);
+  }
+});
+
+$('settings-btn').onclick = () => {
+  $('setup-token').value = localStorage.getItem(LS_TOKEN) || '';
+  $('setup-gist').value = localStorage.getItem(LS_GIST) || '';
+  $('setup-title').textContent = 'Настройки синхронизации';
+  $('setup-overlay').style.display = 'flex';
+};
+
+$('share-btn').onclick = async () => {
+  const gistId = localStorage.getItem(LS_GIST);
+  if (!gistId) {
+    alert('Синхронизация не настроена — нечего копировать.');
+    return;
+  }
+  const url = `${location.origin}${location.pathname}?gist=${gistId}`;
+  try {
+    await navigator.clipboard.writeText(url);
+    alert('Ссылка скопирована:\n' + url + '\n\nОткрой её на другом устройстве и введи токен — прогресс подтянется.');
+  } catch {
+    prompt('Скопируй ссылку вручную:', url);
+  }
+};
+
+// ============================================================
+// SETUP
+// ============================================================
+function showSetupError(msg) {
+  $('setup-error').textContent = msg || '';
+}
+
+$('setup-skip').onclick = () => {
+  $('setup-overlay').style.display = 'none';
+  setSyncBadge('local', '💾 Локально');
+  startApp();
+};
+
+$('setup-connect').onclick = async () => {
+  showSetupError('');
+  const token = $('setup-token').value.trim();
+  let gistId = $('setup-gist').value.trim();
+
+  if (!token || !token.startsWith('ghp_') && !token.startsWith('github_pat_')) {
+    showSetupError('Введите корректный токен (ghp_... или github_pat_...)');
+    return;
+  }
+
+  localStorage.setItem(LS_TOKEN, token);
+  $('setup-connect').disabled = true;
+  $('setup-connect').textContent = 'Подключение…';
+
+  try {
+    // если gist ID задан — проверяем, что он есть
+    if (gistId) {
+      try {
+        const existing = await loadFromGist(gistId);
+        if (existing && typeof existing === 'object') {
+          // беремо стан з гіста (у ньому свіжіші дані, ніж локально)
+          state = {
+            currentIndex: existing.currentIndex || 0,
+            videos: existing.videos || {},
+          };
+        }
+      } catch (e) {
+        // если gist не существует — возможно, опечатка
+        if (String(e).includes('404')) {
+          showSetupError('Гист не найден. Проверь ID или оставь поле пустым, чтобы создать новый.');
+          $('setup-connect').disabled = false;
+          $('setup-connect').textContent = 'Подключить';
+          return;
+        }
+        throw e;
+      }
+      localStorage.setItem(LS_GIST, gistId);
+    } else {
+      // создаём новый гист
+      const gist = await createNewGist();
+      gistId = gist.id;
+      localStorage.setItem(LS_GIST, gistId);
+    }
+
+    persistLocal();
+    $('setup-overlay').style.display = 'none';
+    setSyncBadge('ok', '☁️ Сохранено');
+    startApp();
+    // обновляем URL, чтоб при следующем заходе было ?gist=...
+    const u = new URL(location.href);
+    u.searchParams.set('gist', gistId);
+    history.replaceState(null, '', u.toString());
+  } catch (e) {
+    console.error(e);
+    showSetupError('Не удалось подключиться: ' + e.message);
+  } finally {
+    $('setup-connect').disabled = false;
+    $('setup-connect').textContent = 'Подключить';
+  }
+};
+
+// ============================================================
+// СТАРТ
+// ============================================================
+function startApp() {
+  $('app').style.display = 'block';
+  render();
+}
+
+(async () => {
+  // 1) подтягиваем ?gist= из URL (для нового устройства)
+  const urlGist = new URL(location.href).searchParams.get('gist');
+  if (urlGist && !localStorage.getItem(LS_GIST)) {
+    // если есть токен — подключаемся сразу, если нет — показываем setup с заполненным ID
+    if (localStorage.getItem(LS_TOKEN)) {
+      localStorage.setItem(LS_GIST, urlGist);
+    }
+  }
+
+  // 2) восстанавливаем локальный кеш
+  try {
+    const local = localStorage.getItem(LS_LOCAL);
+    if (local) state = JSON.parse(local);
+  } catch (e) {}
+
+  // 3) если токена нет — показываем setup
+  if (!localStorage.getItem(LS_TOKEN)) {
+    // если в URL есть gist — предзаполняем
+    if (urlGist) $('setup-gist').value = urlGist;
+    $('setup-title').textContent = 'Настройка синхронизации';
+    $('setup-overlay').style.display = 'flex';
+    return;
+  }
+
+  // 4) если токен есть — пробуем загрузить с гиста
+  const gistId = localStorage.getItem(LS_GIST);
+  if (gistId) {
+    setSyncBadge('syncing', '🔄 Загрузка…');
+    try {
+      const remote = await loadFromGist(gistId);
+      if (remote && typeof remote === 'object') {
+        state = {
+          currentIndex: remote.currentIndex || 0,
+          videos: remote.videos || {},
+        };
+        persistLocal();
+        setSyncBadge('ok', '☁️ Синхронизировано');
+      } else {
+        setSyncBadge('ok', '☁️ Готово');
+      }
+    } catch (e) {
+      console.error(e);
+      setSyncBadge('err', '⚠️ Ошибка синхронизации');
+    }
+  } else {
+    setSyncBadge('local', '💾 Локально');
+  }
+
+  startApp();
+})();
+</script>
+</body>
+</html>
